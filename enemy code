@@ -1,0 +1,74 @@
+using System.Collections;
+using System.Collections.Generic;
+using UnityEngine;
+
+public class Enemy : MonoBehaviour
+{
+
+    //Public Variables
+    public bool right = true;
+    public float enemySpeed = 5f;
+    public float enemyWalkDelay = 4f; //Time in seconds between each turn.
+
+    //Private Variables
+    private Rigidbody2D enemyPhysics;
+    private Vector2 move;
+    private float enemyWalkTimer;
+    private SpriteRenderer spriteRend;
+
+    // Use this for initialization
+    void Start()
+    {
+        enemyPhysics = GetComponent<Rigidbody2D>(); //Get the RigidBody2D Component from the enemy object.
+        enemyWalkTimer = enemyWalkDelay; //Set the Timer.
+        spriteRend = GetComponent<SpriteRenderer>(); //Get SpriteRenderer Component.
+    }
+
+    // Update is called once per frame
+    void Update()
+    {
+        spriteRend.sortingOrder = UpdateSortOrder();
+
+        //Enemy will move in the direction he is facing.
+        if (right)
+        {
+            enemyPhysics.velocity = new Vector2(1, 0) * enemySpeed;
+        }        else        {
+            enemyPhysics.velocity = new Vector2(-1, 0) * enemySpeed;
+        }
+
+        //Timer will change direction
+        if (enemyWalkTimer <= 0f)  {
+            enemyWalkTimer = enemyWalkDelay;
+        }
+
+        enemyWalkTimer -= Time.deltaTime;
+         
+        if (enemyWalkTimer <= 0f)  {
+            Flip();
+        }
+
+        int UpdateSortOrder()
+        {
+            {
+                //Generate a sort order number based on Y-position in the world.
+                float height = spriteRend.bounds.min.y;
+                return (Mathf.Abs(Mathf.RoundToInt((height * 100f))));
+
+            }
+
+            void Flip()
+            {
+                right = !right;// Invert Boolean
+                Vector3 scale = transform.localScale; //Get Character's tranform.
+                float x = scale.x; // Create float called x and store the current x value in it.
+                x = x * -1; // Invert x value to or from minus
+                scale.Set(x, scale.y, scale.z); // Set new scale
+                transform.localScale = scale;//Apply it to character to flip.
+            }
+        }
+    }
+}
+
+
+   
