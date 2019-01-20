@@ -1,0 +1,198 @@
+using System.Collections;
+using System.Collections.Generic;
+using UnityEngine;
+
+public class Enemy : MonoBehaviour
+{
+
+    //Public Variables
+    public bool right = true;
+    public float enemySpeed = 5f;
+    public float enemyWalkDelay = 4f; //Time in seconds between each turn.
+    public int enemyHealth = 6;
+    public float alertRange = 30f; //Distance at which the enemy spots the player
+    public float attackRange = 9f; //Distance at which the enemy can hit the player
+    public int enemyDamage = 1;
+
+    //Private Variables
+    private Rigidbody2D enemyPhysics;
+    private Vector2 move;
+    private float enemyWalkTimer;
+    private SpriteRenderer spriteRend;
+    private Animator animator;
+    private bool alive = true;
+    private GameObject target;
+    private Vector2 targetPosition;
+    private Vector2 enemyPosition;
+    private RaycastHit2D hit;
+
+    // Use this for initialization
+    void Start()
+    {
+        enemyPhysics = GetComponent<Rigidbody2D>(); //Get the RigidBody2D Component from the enemy object.
+        enemyWalkTimer = enemyWalkDelay; //Set the Timer.
+        spriteRend = GetComponent<SpriteRenderer>(); //Get SpriteRenderer Component.
+        animator = GetComponent<Animator>();
+        target = GameObject.FindGameObjectWithTag("Player");
+    }
+
+    // Update is called once per frame
+    void Update()
+    {
+        spriteRend.sortingOrder = UpdateSortOrder();
+
+        if (alive)
+        {
+            targetPosition = target.transform.position; //Position of Character
+            enemyPosition = transform.position;         //Position of this Enemy
+            float distance = Vector2.Distance(targetPosition, enemyPosition); //Distance Between Them
+
+            if (distance < attackRange)
+            {
+                StopWalking();
+
+                //Attack
+            }
+            else if (distance < alertRange && distance > attackRange)
+            {
+
+                //Walk toward player
+                enemyPhysics.MovePosition(WalkToRed());
+            }
+           
+            else if (distance > alertRange)
+            {
+                //Wander/Patrol.
+                // Timer will change direction
+                if (enemyWalkTimer <= 0f)
+                {
+                    enemyWalkTimer = enemyWalkDelay;
+                }
+
+                enemyWalkTimer -= Time.deltaTime;
+
+                if (enemyWalkTimer <= 0f)
+                {
+                    Flip();
+                }
+                Walk();
+            }
+
+
+
+        }
+        else
+        {
+            enemyPhysics.velocity = new Vector2(0, 0);
+        }
+    }
+
+    Vector2 WalkToRed()
+    {
+        Vector2 movement = Vector2.MoveTowards(enemyPosition, targetPosition, enemySpeed * Time.fixedDeltaTime);
+        animator.SetBool("Walk", true);
+
+        //Turn enemy if they change direction to move to the character
+        if(enemyPosition.x < targetPosition.x && !right)
+        {
+            Flip();
+        }
+        else if(enemyPosition.x > targetPosition.x && right)
+        {
+            Flip();
+        }
+        return movement;
+    }
+
+
+    void StopWalking()
+    {
+        //Stop Velocity and Stop Walk animation.
+        enemyPhysics.velocity = new Vector2(0, 0);
+        animator.SetBool("Walk", false);
+    }
+
+    void Walk ()
+    {
+        //Enemy will move in the direction he is facing.
+        if (right)
+        {
+            enemyPhysics.velocity = new Vector2(1, 0) * enemySpeed;
+        }
+        else
+        {
+            enemyPhysics.velocity = new Vector2(-1, 0) * enemySpeed;
+        }
+        animator.SetBool("walk", true);
+
+    }
+
+
+    private void LateUpdate()
+    {
+        if (animator.GetCurrentAnimatorStateInfo(0).IsName("Enemy_Interrupt"))
+        {
+            enemyPhysics.velocity = new Vector2(0, 0);
+        }
+    }
+
+    int UpdateSortOrder()
+    {
+        //Generate a sort order number based on Y-position in the world.
+        float height = spriteRend.bounds.min.y;
+        return (Mathf.Abs(Mathf.RoundToInt((height * 100f))));
+    }
+
+    void Flip()
+    {
+        right = !right;// Invert Boolean
+        Vector3 scale = transform.localScale; //Get Character's tranform.
+        float x = scale.x; // Create float called x and store the current x value in it.
+        x = x * -1; // Invert x value to or from minus
+        scale.Set(x, scale.y, scale.z); // Set new scale
+        transform.localScale = scale;//Apply it to character to flip.
+    }
+
+    public void TakeDamage(int damage)
+    {
+        enemyHealth -= damage;
+        if (enemyHealth <= 0)
+            
+        {
+            animator.SetTrigger("Death");
+            GetComponent<BoxCollider2D>().enabled = false;
+            alive = false;
+        }
+        else
+        {
+            animator.SetTrigger("Take_Hit");
+        }
+
+    }
+
+    void Attack()
+    {
+        Vector2 dir = (right) ? new Vector2(1, 0) : new Vector2(-1, 0);
+        Vector2 center = transform.position;
+
+        hit = Physics2D.Raycast(center, dir, attackRange, 1 << LayerMask.NameToLayer("Players"));
+        if (hit.collider != null)
+        {
+            //Hit a Player
+            if(hit.collider.tag == "Player" && hit.collider.GetType() == typeof(CapsuleCollider2D))
+            {
+                //Player Takes Damage
+                hit.collider.gameObject.GetComponent<Player>().TakeDamage(enemyDamage);
+            }
+            else
+            {
+                return;
+            }
+         }  
+        else
+        {
+            return;
+        }
+    }
+
+}
