@@ -1,0 +1,132 @@
+using System.Collections;
+using System.Collections.Generic;
+using UnityEngine;
+
+public class Player : MonoBehaviour {
+
+    //Declaring Variables.
+    public float speed = 5f;//CharacterSpeed.
+    public bool right = false; //Is the character facing right?
+    public int redHealth = 10; //Initial Health
+    public int redDamage = 2; //Damage Dealt
+    public float redRange = 12f; //Attack Range
+    public int maxHealth; //Maximum Health
+
+
+    private Rigidbody2D characterPhysics; //Physics Controller
+    private float xmove; // X movement value
+    private float ymove; // Y movement value
+    private SpriteRenderer spriteRend; // Sprite renderer component.
+    private Renderer rend;// Renderer
+    private Animator animator;
+    private RaycastHit2D[] hits;
+
+	// Use this for initialization
+	void Start () {
+        characterPhysics = GetComponent<Rigidbody2D>(); // Get the Rigidbody2D Component.
+        spriteRend = GetComponent<SpriteRenderer>(); //Get the SpriteRenderer Component.
+        animator = GetComponent<Animator>();
+        rend = GetComponent<Renderer>();
+        maxHealth = redHealth;
+	}
+
+    //Used for Physics Calculations.
+    private void FixedUpdate()
+    {
+        xmove = Input.GetAxis("Horizontal") * speed; //Get the Horizontal Movement between -1 and 1, multiply by speed.    
+        ymove = Input.GetAxis("Vertical") * speed; //Get the Vertical Movement between -1 and 1, multiply by speed.  
+        Vector2 move = new Vector2(xmove, ymove); //Create a vector (x,y), containing our direction values.
+        characterPhysics.velocity = Vector2.Lerp(characterPhysics.velocity, move, 0.8f);
+
+        if (xmove > 0 && !right)
+        {
+            Flip();
+        } else if (xmove < 0 && right)
+        {
+            Flip();
+        }
+    }
+
+
+    // Update is called once per frame
+    void Update () {
+        spriteRend.sortingOrder = UpdateSortOrder();
+
+        if (Input.GetMouseButton(0))
+        {
+            //Chop Animation.
+            animator.SetTrigger("Chop");
+            
+        }
+
+        // If player is moving then trigger walk animation.
+        if (xmove != 0 || ymove != 0){
+            //Walk True
+            animator.SetBool("Walk", true);
+        } else {
+            //Walk false
+            animator.SetBool("Walk", false);
+
+        }
+
+    }
+
+    int UpdateSortOrder()    {
+        //Generate a sort order number based on Y-position in the world.
+        float height = spriteRend.bounds.min.y;
+        return (Mathf.Abs(Mathf.RoundToInt((height * 100f))));
+    }
+
+    void Flip()
+    {
+        right = !right;// Invert Boolean
+        Vector3 scale = transform.localScale; //Get Character's tranform.
+        float x = scale.x; // Create float called x and store the current x value in it.
+        x = x * -1; // Invert x value to or from minus
+        scale.Set(x, scale.y, scale.z); // Set new scale
+        transform.localScale = scale; //Apply it to character to flip.
+    }
+
+    void Attack ()
+    {
+        Vector2 direction = (right) ? new Vector2(1, 0) : new Vector2(-1, 0); //If right, shoot right, if left shoot left.
+        Vector2 center = transform.position; //Pivot point.
+        float attackRange = redRange;
+
+        hits = Physics2D.RaycastAll(center, direction, attackRange, 1 << LayerMask.NameToLayer("enemies"));
+        foreach (RaycastHit2D hit in hits)
+        {
+            if (hit.collider != null){
+
+                if (hit.collider.tag == "Regular_Enemy" && hit.collider.GetType () == typeof (CapsuleCollider2D))
+                {
+                    hit.collider.gameObject.GetComponent<Enemy>().TakeDamage(redDamage);
+                    //Enemy gets hit.
+                }
+                else
+                {
+                    return;
+                }
+            }
+            else
+            {
+                return;
+            }
+
+            }
+        }
+
+    public void TakeDamage(int damage)
+    {
+        //Deplete Health by Damage
+        redHealth -= damage;
+
+        if(redHealth <= 0)
+        {
+            //red is dead
+        }
+    }
+
+    }
+
+
